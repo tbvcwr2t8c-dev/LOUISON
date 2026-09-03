@@ -45,3 +45,9 @@ test('cloud only reports saved after acknowledgement and deduplicates identical 
 test('cloud failures and missing verification keep retry pending, never report success',async()=>{
  for(const fetcher of [async()=>{throw Error('offline');},async()=>({ok:true,text:async()=>'[]'})]){const cloud=cloudSetup(fetcher);await cloud.flush();clearTimeout(cloud.timer);assert.equal(cloud.pending,true);assert.doesNotMatch(cloud.message,/Sauvegardé en ligne/);}
 });
+test('email link verification uses only this project and refuses a different account',async()=>{
+ let calls=0;const cloud=cloudSetup(async(url,options)=>{calls++;assert.equal(url,'https://test.invalid/auth/v1/verify');assert.deepEqual(JSON.parse(options.body),{token_hash:'example',type:'magiclink'});return {ok:true,text:async()=>JSON.stringify({access_token:'new',refresh_token:'refresh',expires_in:3600,user:{id:'user',email:'reader@example.invalid'}})};});
+ await assert.rejects(()=>cloud.verifyLink('https://elsewhere.invalid/auth/v1/verify?token=example&type=magiclink'));assert.equal(calls,0);
+ await assert.rejects(()=>cloud.verifyLink('https://test.invalid/auth/v1/verify?token=example&type=magiclink','different@example.invalid'));
+ await cloud.verifyLink('https://test.invalid/auth/v1/verify?token=example&type=magiclink','reader@example.invalid');assert.equal(cloud.enabled,false);assert.equal(cloud.session.access_token,'new');
+});

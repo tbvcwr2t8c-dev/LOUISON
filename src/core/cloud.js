@@ -2,7 +2,7 @@
 // Cloud snapshots are append-only: another device can never overwrite a backup.
 const AUTH='constante_cloud_auth', DEVICE='constante_cloud_device', ENABLED='constante_cloud_enabled';
 export class CloudBackup {
-  constructor({config,storage,readState,notify=()=>{},fetcher=fetch}) {
+  constructor({config,storage,readState,notify=()=>{},fetcher=(...args)=>fetch(...args)}) {
     Object.assign(this,{config,storage,readState,notify,fetcher});
     this.configured=!!config.url && !!config.key;
     this.session=null;try{this.session=JSON.parse(storage.getItem(AUTH)||'null');}catch{}
@@ -23,6 +23,15 @@ export class CloudBackup {
   async verifyCode(email,token) {
     const session=await this.request('/auth/v1/verify',{method:'POST',body:{email,token,type:'email'}});
     this.keepSession(session);this.enabled=false;this.storage.setItem(ENABLED,'false');this.notify();
+  }
+  async verifyLink(value,expectedEmail) {
+    let link;try{link=new URL(value);}catch{throw Error('Colle le lien complet du bouton reçu par e-mail.');}
+    if(link.origin!==new URL(this.config.url).origin || link.pathname!=='/auth/v1/verify')throw Error('Ce lien ne vient pas du service de connexion Constante.');
+    const token_hash=link.searchParams.get('token'),type=link.searchParams.get('type');
+    if(!token_hash || !['email','signup','magiclink'].includes(type))throw Error('Lien de connexion non reconnu.');
+    const session=await this.request('/auth/v1/verify',{method:'POST',body:{token_hash,type}});
+    if(expectedEmail && session?.user?.email?.toLowerCase()!==expectedEmail.toLowerCase())throw Error('Ce lien correspond à une autre adresse e-mail.');
+    this.keepSession(session);this.enabled=false;this.storage.setItem(ENABLED,'false');this.lastDigest=null;this.notify();
   }
   keepSession(session) {
     if(!session?.access_token || !session?.refresh_token || !session.user?.id)throw Error('Connexion incomplète.');

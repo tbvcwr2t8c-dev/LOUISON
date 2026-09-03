@@ -8,21 +8,23 @@ Flair : huit fiches de fondamentaux, working flair et premiers combos ; séances
 
 Les modules s’ajoutent après une copie locale de l’état V1.5, sans modifier l’objet Training. Pause et réactivation conservent les données. L’export contient tous les univers ; l’import contrôle le fichier et demande confirmation avant remplacement. Les identifiants de connexion sont exclus de l’export. Aucun fichier utilisateur n’est inclus dans ce dépôt.
 
-## Sauvegarde en ligne : configuration requise
+## Sauvegarde en ligne
 
-Le client Supabase et le schéma sont préparés, mais le projet de stockage n’est pas encore provisionné. `src/cloud-config.js` reste vide et l’interface indique clairement que seule la sauvegarde locale est disponible. Ne pas présenter cette version comme permettant déjà la récupération sur un autre téléphone.
+Le projet Supabase `constante-backups` est provisionné via Vercel Marketplace, offre gratuite, région Paris (`eu-west-3`). La table et les politiques du fichier `supabase/001_backups.sql` sont appliquées. La configuration source contient uniquement l’URL et la clé publiable, jamais la clé de service.
 
-1. Créer un projet Supabase privé via Vercel Marketplace dans l’équipe propriétaire ; sélectionner une région européenne et confirmer les conditions/coûts avec le propriétaire.
-2. Appliquer une fois `supabase/001_backups.sql`. Activer l’authentification par e-mail et configurer l’envoi de codes (`{{ .Token }}`) dans les modèles d’e-mail. Les codes évitent d’ouvrir une autre session Safari depuis l’app installée. Vérifier les restrictions et quotas d’envoi du fournisseur ; configurer un expéditeur de production si nécessaire.
-3. Renseigner seulement l’URL publique Supabase et la clé publiable dans `src/cloud-config.js`. Ne jamais placer la clé de service ni de secret dans le site.
-4. Vérifier sur le backend réel : un compte ne peut lire ou ajouter que ses propres copies ; aucun accès anonyme ; aucune modification/suppression des copies via le client. Tester OTP, renouvellement de session, panne réseau, reprise, export et restauration depuis un deuxième appareil avant activation.
-5. L’utilisateur se connecte dans l’app puis choisit d’activer les envois sur cet appareil. Sur un appareil neuf, il restaure d’abord sa copie. Les instantanés sont distincts et immuables : pas de fusion automatique ni d’écrasement distant entre appareils.
+Le test SQL transactionnel réel valide l’insertion et la lecture par le propriétaire, puis l’absence de visibilité depuis un autre compte. Les comptes et les copies de test sont annulés par rollback. Les droits sont limités à SELECT et INSERT pour les utilisateurs authentifiés, avec les politiques `auth.uid() = user_id` ; aucun droit anonyme ni modification/suppression via l’application.
+
+L’offre gratuite utilise les modèles d’e-mails Supabase par défaut : lien à usage unique. Pour connecter l’app installée, l’utilisateur copie le lien du bouton de l’e-mail et le colle dans Mon compte sans l’ouvrir. L’app vérifie l’origine, le type de lien et l’adresse du compte, puis échange le jeton auprès de Supabase. L’envoi initial à l’adresse choisie a été accepté par le serveur ; la validation par l’utilisateur et le premier envoi réel restent à terminer. Une configuration SMTP personnalisée permettrait ultérieurement des e-mails de marque avec codes courts. Ne pas contourner les restrictions des modèles gratuits.
+
+Sur un nouvel appareil, restaurer d’abord la dernière copie, puis activer les envois pour cet appareil. L’application n’effectue aucune fusion automatique. Les exports excluent les jetons de connexion. Les éventuelles limites d’envoi du service gratuit doivent être prises en compte avant d’ouvrir l’application à d’autres utilisateurs.
+
+Avant mise en production : terminer la connexion et vérifier un envoi réel puis sa restauration ; vérifier la configuration d’URL de retour si la connexion par ouverture directe du lien est ajoutée. La connexion actuelle attend le collage du lien dans l’app.
 
 Un envoi est déclenché après modification locale lorsque l’app est ouverte, avec reprise après panne réseau. L’interface ne confirme la sauvegarde qu’après lecture de son identifiant sur le serveur. Ce mécanisme ne s’exécute pas lorsque l’app est fermée. Les copies s’accumulent ; prévoir une politique de conservation et vérifier les quotas avant utilisation durable.
 
 ## Validation
 
-`node --test tests/*.test.js` : 21 tests, dont les 240 combinaisons de comportement comparées à la V1, l’ajout idempotent, les échecs de stockage, les restaurations, les progressions Lecture/Flair, le démarrage et la navigation, les échecs et confirmations cloud simulés. `node scripts/build.js` produit `dist/` et vérifie l’empreinte V1. Aucun test cloud réel n’a encore été effectué.
+`node --test tests/*.test.js` : 22 tests, dont les 240 combinaisons de comportement comparées à la V1, l’ajout idempotent, les échecs de stockage, les restaurations, les progressions Lecture/Flair, le démarrage et la navigation, les échecs et confirmations cloud simulés. `node scripts/build.js` produit `dist/` et vérifie l’empreinte V1. Test réel d’isolation SQL réussi ; connexion et sauvegarde depuis un appareil encore en validation.
 
 Sources pédagogiques :
 - https://flairbartending.tv/flair-lesson-1-the-drop/

@@ -1,3 +1,2 @@
-// Public Supabase project URL + publishable key only. Never put a service key here.
-// Filled after the owner provisions the private backup project and applies SQL.
-export const CLOUD_CONFIG = Object.freeze({url:'',key:''});
+// Public Supabase connection only; access is enforced by account-scoped RLS.
+export const CLOUD_CONFIG = Object.freeze({url:'https://tbihhthorhtendtjzssr.supabase.co',key:'sb_publishable_Lifj1NHfFcKj2ntpitPFjw_uP-1t4Ck'});
