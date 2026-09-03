@@ -1,0 +1,10 @@
+import { cp, mkdir, readFile, rm } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+const root = new URL('../', import.meta.url);
+const baseline = await readFile(new URL('reference/v1-training/index.html', root));
+if (createHash('sha256').update(baseline).digest('hex') !== 'e5bc676d7c09e5cf7465e80e60dfa514ee3c3f8cac537aff8e329b9fe0e6b3a9') throw new Error('Training V1 reference was modified');
+await rm(new URL('dist/', root), { recursive: true, force: true });
+await mkdir(new URL('dist/', root));
+await cp(new URL('index.html', root), new URL('dist/index.html', root));
+await cp(new URL('src/', root), new URL('dist/src/', root), { recursive: true });
+console.log('Static application built in dist; V1 reference verified.');
