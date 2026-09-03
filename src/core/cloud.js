@@ -13,7 +13,11 @@ export class CloudBackup {
     const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),20000);
     try {
       const response=await this.fetcher(this.config.url+path,{method,signal:controller.signal,headers:{apikey:this.config.key,'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{}),...headers},...(body===undefined?{}:{body:JSON.stringify(body)})});
-      if(!response.ok)throw Error(response.status===401?'Reconnecte-toi pour reprendre la sauvegarde.':response.status===429?'Trop de demandes. Réessaie dans quelques instants.':'Le serveur de sauvegarde ne répond pas correctement. Tes données restent sur cet appareil.');
+      if(!response.ok) {
+        let details={};try{details=JSON.parse(await response.text());}catch{}
+        const messages={otp_expired:'Ce lien a expiré ou a déjà été utilisé. Demande un nouveau lien, puis copie-le sans l’ouvrir.',email_address_not_authorized:'Le service d’e-mail doit être configuré pour autoriser cette adresse.',over_email_send_rate_limit:'La limite d’envoi des e-mails est atteinte. Réessaie plus tard.',email_provider_disabled:'La connexion par e-mail n’est pas activée.'};
+        throw Error(messages[details.error_code||details.code] || (response.status===401?'Reconnecte-toi pour reprendre la sauvegarde.':response.status===429?'Trop de demandes. Réessaie dans quelques instants.':'Le serveur de sauvegarde ne répond pas correctement. Tes données restent sur cet appareil.'));
+      }
       const text=await response.text();return text?JSON.parse(text):null;
     } finally {clearTimeout(timeout);}
   }

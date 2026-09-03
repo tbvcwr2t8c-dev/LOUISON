@@ -51,3 +51,7 @@ test('email link verification uses only this project and refuses a different acc
  await assert.rejects(()=>cloud.verifyLink('https://test.invalid/auth/v1/verify?token=example&type=magiclink','different@example.invalid'));
  await cloud.verifyLink('https://test.invalid/auth/v1/verify?token=example&type=magiclink','reader@example.invalid');assert.equal(cloud.enabled,false);assert.equal(cloud.session.access_token,'new');
 });
+test('expired sign-in links get a useful message without exposing server details',async()=>{
+ const cloud=cloudSetup(async()=>({ok:false,status:403,text:async()=>JSON.stringify({error_code:'otp_expired',message:'private server detail'})}));
+ await assert.rejects(()=>cloud.verifyLink('https://test.invalid/auth/v1/verify?token=example&type=magiclink'),error=>error.message.includes('expiré') && !error.message.includes('private'));
+});
