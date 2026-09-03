@@ -1,3 +1,5 @@
+> La branche V2 ajoute Lecture et Flair. Voir [le périmètre et les étapes de sauvegarde en ligne](V2-LECTURE-FLAIR.md). Le document ci-dessous décrit la référence V1.5.
+
 # Constante — V1.5 Modular Core
 
 Évolution additive du Training réellement publié sur https://constante-kohl.vercel.app.
