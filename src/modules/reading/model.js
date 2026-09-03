@@ -1,6 +1,7 @@
 import {clone} from '../../core/ui.js';
 export const initialReading = () => ({minutes:5,signal:0,target:4,books:[],bookId:null,sessions:[],draft:null});
 export function validateReading(data) {
+  if(data?.adaptive!==undefined && typeof data.adaptive!=='boolean')throw Error('Réglage Lecture illisible.');
   if (!data || !Number.isFinite(data.minutes) || data.minutes<1 || data.minutes>30 || !Number.isFinite(data.signal) || !Number.isInteger(data.target) || data.target<1 || data.target>7 || !Array.isArray(data.books) || !Array.isArray(data.sessions)) throw Error('Données Lecture illisibles.');
   for(const book of data.books) if(typeof book.id!=='string' || typeof book.title!=='string') throw Error('Livre illisible.');
   for(const session of data.sessions) if(typeof session.id!=='string' || !Number.isFinite(Date.parse(session.date)) || !Number.isFinite(session.seconds) || session.seconds<0 || !Number.isInteger(session.pages) || session.pages<0) throw Error('Séance Lecture illisible.');
@@ -17,7 +18,7 @@ export function finishReading(data, result) {
   if(next.sessions.some(s=>s.id===draft.id)) throw Error('Cette séance a déjà été enregistrée.');
   next.sessions.push({id:draft.id,date:result.date,mode:draft.mode,bookId:draft.bookId,bookTitle:draft.bookTitle,pages:result.pages,seconds:result.seconds,feedback:result.feedback,goalMinutes:draft.goalMinutes});
   // Minimum counts for regularity, without increasing the next target.
-  if(draft.mode==='normal') {
+  if(draft.mode==='normal' && next.adaptive!==false) {
     next.signal += result.feedback>0 && result.seconds<draft.goalMinutes*60 ? 0 : result.feedback;
     if(next.signal>=3){next.minutes=Math.min(30,next.minutes+1);next.signal=0;}
     if(next.signal<=-2){next.minutes=Math.max(1,next.minutes-1);next.signal=0;}

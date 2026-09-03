@@ -5,10 +5,11 @@ import { ReadingModule } from './modules/reading/index.js';
 import { FlairModule } from './modules/flair/index.js';
 import { CloudBackup } from './core/cloud.js';
 import { CLOUD_CONFIG } from './cloud-config.js';
+import { mountProfile } from './core/profile.js';
 import { mountAccount } from './core/account.js';
 
 const registry = new ModuleRegistry().register(TrainingModule).register(ReadingModule).register(FlairModule);
-let storage, training, cloud, account, selected='training', failed = false;
+let storage, training, cloud, account, selected='training', failed = false, recovering=false;
 const mounted={};
 const root = document.querySelector('#training-root');
 const paused = document.querySelector('#paused');
@@ -29,7 +30,7 @@ function fail(error) {
   failed = true;
   document.querySelector('#dlg').close();
   root.hidden = true; paused.hidden = true;
-  for(const id of ['reading-root','flair-root','account-root','universes'])document.getElementById(id).hidden=true;
+  for(const id of ['reading-root','flair-root','account-root','universes','profile-root'])document.getElementById(id).hidden=true;
   if(cloud){cloud.enabled=false;clearTimeout(cloud.timer);}
   const message = document.querySelector('#core-message');
   message.hidden = false; message.className = 'app'; message.replaceChildren();
@@ -73,6 +74,11 @@ function visibility() {
   }
   for(const id of ['training','reading','flair','account'])document.querySelector('#'+id+'-root').hidden=true;
   paused.hidden=true;
+  const profile=document.querySelector('#profile-root');
+  const onboarding=storage.state.core.preferences?.onboardingPending && !recovering;
+  profile.hidden=!onboarding;nav.hidden=!!onboarding;
+  if(onboarding){mountProfile({root:profile,state:storage.state,save:saveProfile,restore:()=>{recovering=true;selected='account';visibility();}});return;}
+
   if(selected==='account'){document.querySelector('#account-root').hidden=false;account.refresh();return;}
   if(!storage.state.modules[selected].enabled) {
     paused.hidden=false;paused.replaceChildren();
@@ -87,6 +93,10 @@ function visibility() {
   }
 }
 
+function saveProfile(next) {
+  if(Object.values(mounted).some(m=>m.hasSession()) || storage.state.modules.reading.data.draft || storage.state.modules.flair.data.draft)throw Error('Termine ou annule tes séances en cours avant de changer ton rythme.');
+  guarded(()=>storage.commit(next));location.reload();
+}
 function boot() {
   try {
     storage = new Storage(localStorage);
@@ -94,8 +104,9 @@ function boot() {
     mounted.training=training;
     storage.installModules([ReadingModule,FlairModule]);
     cloud=new CloudBackup({config:CLOUD_CONFIG,storage:localStorage,readState:()=>storage.state,notify:()=>account?.status()});
-    account=mountAccount({root:document.querySelector('#account-root'),storage,cloud,download,toggle:setEnabled,registry,hasSession:()=>Object.values(mounted).some(m=>m.hasSession()) || !!storage.state.modules.reading.data.draft || !!storage.state.modules.flair.data.draft});
-    visibility();cloud.schedule();
+    account=mountAccount({root:document.querySelector('#account-root'),storage,cloud,download,toggle:setEnabled,registry,saveProfile,hasSession:()=>Object.values(mounted).some(m=>m.hasSession()) || !!storage.state.modules.reading.data.draft || !!storage.state.modules.flair.data.draft});
+    if(!storage.state.modules.training.enabled)selected=registry.active(storage.state)[0]?.id||'account';
+    visibility();if(!storage.state.core.preferences?.onboardingPending)cloud.schedule();
     window.addEventListener('online',()=>cloud.schedule());
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)cloud.schedule();});
     window.addEventListener('storage', event => {

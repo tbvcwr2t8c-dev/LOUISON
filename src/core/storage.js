@@ -50,6 +50,7 @@ export class Storage {
     requireValue(this.legacyRaw !== null || this.storage.getItem(KEYS.backup) === null, 'Une sauvegarde V1 existe sans données actives. Exportez-la avant toute restauration.');
     const original = this.legacyRaw === null ? makeDefault() : JSON.parse(this.legacyRaw);
     const next = migrateV1(original);
+    if(this.legacyRaw===null)next.core.preferences.onboardingPending=true;
     if (this.legacyRaw !== null) {
       const previous = this.storage.getItem(KEYS.backup);
       requireValue(previous === null || previous === this.legacyRaw, 'Une sauvegarde V1 différente existe déjà.');

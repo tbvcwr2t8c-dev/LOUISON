@@ -24,7 +24,7 @@ Un envoi est déclenché après modification locale lorsque l’app est ouverte,
 
 ## Validation
 
-`node --test tests/*.test.js` : 22 tests, dont les 240 combinaisons de comportement comparées à la V1, l’ajout idempotent, les échecs de stockage, les restaurations, les progressions Lecture/Flair, le démarrage et la navigation, les échecs et confirmations cloud simulés. `node scripts/build.js` produit `dist/` et vérifie l’empreinte V1. Test réel d’isolation SQL réussi ; connexion et sauvegarde depuis un appareil encore en validation.
+`node --test tests/*.test.js` : 25 tests, dont les 240 combinaisons de comportement comparées à la V1, l’ajout idempotent, les échecs de stockage, les restaurations, les progressions Lecture/Flair, le démarrage et la navigation, les échecs et confirmations cloud simulés. `node scripts/build.js` produit `dist/` et vérifie l’empreinte V1. Test réel d’isolation SQL réussi ; connexion et sauvegarde depuis un appareil encore en validation.
 
 Sources pédagogiques :
 - https://flairbartending.tv/flair-lesson-1-the-drop/
@@ -33,3 +33,9 @@ Sources pédagogiques :
 - https://flairbartending.tv/flair-lesson-20-tin-spin/
 - https://flairbartending.tv/flair-lesson-21-tin-roll-down-arm/
 - https://flairbartending.tv/flair-lesson-16-the-stall/
+
+## Accueil et objectifs personnels
+
+Une installation neuve propose le choix des univers, un prénom facultatif, le rythme Training et un objectif Lecture fixe ou adaptatif. Un accès à la récupération est proposé avant toute nouvelle progression. Une installation existante conserve ses réglages et ne repasse pas automatiquement par cet accueil. Les choix restent modifiables dans Mon compte.
+
+La séparation entre personnes utilise leurs appareils ou profils de navigateur distincts et leurs comptes de sauvegarde. Cette version ne gère pas plusieurs profils locaux sur le même navigateur : se déconnecter ne masque ni ne supprime les données locales. Cette limite est indiquée dans Mon compte. L’envoi des e-mails pour des utilisateurs externes reste à valider/configurer avant invitation publique.

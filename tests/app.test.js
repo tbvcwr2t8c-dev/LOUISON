@@ -8,6 +8,7 @@ test('application boots, installs modules and opens each universe without touchi
  globalThis.window={addEventListener(){}};globalThis.alert=message=>{throw Error(message);};
  await import('../src/app.js');
  assert.equal(element('#core-message').children.length,0,element('#core-message').children.map(c=>c.textContent).join(' '));const state=JSON.parse(values.get('constante_v2'));assert.deepEqual(Object.keys(state.modules),['training','reading','flair']);const before=JSON.stringify(state.modules.training);
+ assert.equal(state.core.preferences.onboardingPending,true);assert.equal(element('#profile-root').hidden,false);element('#profile-root #profile-restore').onclick();assert.equal(element('#account-root').hidden,false);
  for(const name of ['Lecture','Flair','Mon compte','Training']){const button=element('#universes').children.find(b=>b.textContent===name);assert.ok(button);button.onclick();}
  assert.equal(JSON.stringify(JSON.parse(values.get('constante_v2')).modules.training),before);
 });
