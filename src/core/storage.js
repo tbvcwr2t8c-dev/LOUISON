@@ -7,10 +7,18 @@ function requireValue(ok, message) { if (!ok) throw new Error(message); }
 export function validateTraining(data) {
   requireValue(object(data) && typeof data.start === 'string' && Number.isFinite(Date.parse(data.start)), 'Date de départ illisible.');
   requireValue(Number.isFinite(data.target) && data.target > 0 && typeof data.rower === 'boolean', 'Réglages Training illisibles.');
+  requireValue(data.walker === undefined || typeof data.walker === 'boolean', 'Réglage tapis de marche illisible.');
+  requireValue(data.rope === undefined || typeof data.rope === 'boolean', 'Réglage corde à sauter illisible.');
+  requireValue(data.walkerMaxSpeed === undefined || Number.isFinite(data.walkerMaxSpeed) && data.walkerMaxSpeed > 0 && data.walkerMaxSpeed <= 15, 'Vitesse du tapis illisible.');
+  requireValue(data.walkerMaxIncline === undefined || Number.isFinite(data.walkerMaxIncline) && data.walkerMaxIncline >= 0 && data.walkerMaxIncline <= 15, 'Inclinaison du tapis illisible.');
   requireValue(object(data.scores) && Array.isArray(data.sessions), 'Progression Training illisible.');
   for (const key of ['push', 'squat', 'plank', 'burpee', 'row']) {
     const score = data.scores[key];
     requireValue(object(score) && Number.isFinite(score.a) && score.a > 0 && (score.s === undefined || Number.isFinite(score.s)), 'Niveau Training illisible.');
+  }
+  for (const key of ['walk', 'rope']) if (data.scores[key] !== undefined) {
+    const score = data.scores[key];
+    requireValue(object(score) && Number.isFinite(score.a) && score.a > 0 && (score.s === undefined || Number.isFinite(score.s)), 'Niveau équipement Training illisible.');
   }
   for (const session of data.sessions) {
     requireValue(object(session) && typeof session.date === 'string' && Number.isFinite(Date.parse(session.date)) && Array.isArray(session.ex), 'Séance illisible.');
@@ -50,6 +58,7 @@ export class Storage {
     requireValue(this.legacyRaw !== null || this.storage.getItem(KEYS.backup) === null, 'Une sauvegarde V1 existe sans données actives. Exportez-la avant toute restauration.');
     const original = this.legacyRaw === null ? makeDefault() : JSON.parse(this.legacyRaw);
     const next = migrateV1(original);
+    if(this.legacyRaw===null)next.core.preferences.onboardingPending=true;
     if (this.legacyRaw !== null) {
       const previous = this.storage.getItem(KEYS.backup);
       requireValue(previous === null || previous === this.legacyRaw, 'Une sauvegarde V1 différente existe déjà.');
@@ -78,6 +87,31 @@ export class Storage {
     next.modules.training.data = copy(data);
     this.commit(next);
   }
+  installModules(definitions) {
+    const next=copy(this.state);
+    for(const module of definitions) {
+      if(Object.hasOwn(next.modules,module.id)) {
+        requireValue(next.modules[module.id].version===module.version, 'Version du module non prise en charge : '+module.name);
+        module.validate(next.modules[module.id].data);
+      } else next.modules[module.id]={enabled:true,version:module.version,data:module.initial()};
+    }
+    requireValue(JSON.stringify(next.modules.training)===JSON.stringify(this.state.modules.training),'Training a changé pendant l’ajout des modules.');
+    if(JSON.stringify(next)!==this.raw) {
+      if(this.storage.getItem('constante_v2_before_modules')===null)this.storage.setItem('constante_v2_before_modules',this.raw);
+      this.commit(next);
+    }
+  }
+  saveModule(id,data) {
+    requireValue(id!=='training' && Object.hasOwn(this.state.modules,id),'Module inconnu.');
+    const next=copy(this.state);next.modules[id].data=copy(data);this.commit(next);
+  }
+  restoreState(data) {
+    validateV2(data);this.assertUnchanged();
+    const backup=JSON.stringify({format:'constante-backup',backupVersion:1,exportedAt:new Date().toISOString(),storage:Object.fromEntries(Object.values(KEYS).map(key=>[key,this.storage.getItem(key)]))});
+    this.storage.setItem('constante_before_restore',backup);
+    requireValue(this.storage.getItem('constante_before_restore')===backup,'La sauvegarde avant restauration a échoué.');
+    this.commit(copy(data));
+  }
   setEnabled(id, enabled) {
     requireValue(typeof enabled === 'boolean' && Object.hasOwn(this.state.modules, id), 'Module inconnu.');
     const next = copy(this.state);
@@ -85,6 +119,6 @@ export class Storage {
     this.commit(next);
   }
   exportRaw() {
-    return JSON.stringify({ format: 'constante-backup', backupVersion: 1, exportedAt: new Date().toISOString(), storage: Object.fromEntries(Object.values(KEYS).map(key => [key, this.storage.getItem(key)])) }, null, 2);
+    return JSON.stringify({ format: 'constante-backup', backupVersion: 1, exportedAt: new Date().toISOString(), storage: Object.fromEntries([...Object.values(KEYS),'constante_v2_before_modules','constante_before_restore'].map(key => [key, this.storage.getItem(key)])) }, null, 2);
   }
 }

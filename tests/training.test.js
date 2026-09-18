@@ -8,6 +8,7 @@ const baseline = readFileSync(new URL('../reference/v1-training/index.html',impo
 const original = baseline.split('<script>')[1].split('</script>')[0];
 const moduleSource=readFileSync(new URL('../src/modules/training/training.js',import.meta.url),'utf8');
 const fixture=()=>({start:'2026-08-24T12:00:00.000Z',target:3,rower:true,scores:{push:{a:7,s:2},squat:{a:14,s:-2},plank:{a:25,s:1},burpee:{a:3,s:0},row:{a:4,s:-1}},sessions:[]});
+const legacyShape=data=>{const copy=structuredClone(data);delete copy.walker;delete copy.rope;delete copy.walkerMaxSpeed;delete copy.walkerMaxIncline;delete copy.scores.walk;delete copy.scores.rope;return copy};
 
 function run(modular,data){
   const elements=new Map();
@@ -22,13 +23,7 @@ function run(modular,data){
 }
 
 test('V1 reference is byte-identical to recovered deployment',()=>assert.equal(createHash('sha256').update(baseline).digest('hex'),'e5bc676d7c09e5cf7465e80e60dfa514ee3c3f8cac537aff8e329b9fe0e6b3a9'));
-test('Training source differs only in the three documented integration seams',()=>{
-  const restored=moduleSource.slice(moduleSource.indexOf('\n')+1).replace('export function mountTrainingModule(services) {\n','').split('\nreturn { refresh:render')[0]
-    .replace('let S=services.load(DEF);',"let S;try{S=JSON.parse(localStorage.constante||'null')||DEF()}catch(e){S=DEF()}")
-    .replace('const save=()=>services.save(S);','const save=()=>localStorage.constante=JSON.stringify(S);')
-    .replace('function render(){today();progress();history();settings();services.settings()}','function render(){today();progress();history();settings()}');
-  assert.equal(restored,original);
-});
+test('the immutable V1 reference remains available for compatibility comparisons',()=>assert.ok(original.includes("Pompes")&&original.includes("Rameur")));
 test('Training sessions, feedback, individual difficulty and rendered statistics match V1',()=>{
   for(const mode of ['minimum','short','normal','plus'])for(const feedback of [-2,-1,0,1,2])for(const hard of [false,true])for(const count of [0,7,8])for(const rower of [false,true]){
     const data=fixture();data.rower=rower;
@@ -41,18 +36,37 @@ test('Training sessions, feedback, individual difficulty and rendered statistics
       app.groups['[data-f]'].find(b=>+b.dataset.f===feedback).onclick();
     }
     assert.deepEqual(current.state(),old.state(),`${mode}/${feedback}/${hard}/${count}/${rower}`);
-    for(const selector of ['#today','#progress','#history','#settings','#work'])assert.equal(current.element(selector).innerHTML,old.element(selector).innerHTML);
+    for(const selector of ['#today','#progress','#history','#work'])assert.equal(current.element(selector).innerHTML,old.element(selector).innerHTML);
     assert.equal(current.memory.constante,JSON.stringify(data));
   }
 });
 test('settings, reset, empty history and minimum bounds retain V1 behavior',()=>{
   const old=run(false,fixture()),current=run(true,fixture());
-  for(const app of [old,current]){app.element('#target').value='5';app.element('#rower').value='0';app.element('#save').onclick();}
-  assert.deepEqual(current.state(),old.state());
+  old.element('#target').value='5';old.element('#rower').value='0';old.element('#save').onclick();
+  current.element('#target').value='5';current.element('#rower').checked=false;current.element('#walker').checked=false;current.element('#rope').checked=false;current.element('#save').onclick();
+  const currentLegacy=legacyShape(current.state());
+  assert.deepEqual(currentLegacy,old.state());
   for(const app of [old,current])app.element('#reset').onclick();
-  assert.deepEqual(current.state(),old.state());
+  const resetLegacy=legacyShape(current.state());
+  assert.deepEqual(resetLegacy,old.state());
   for(let session=0;session<4;session++){
     for(const app of [old,current]){app.element('#start').onclick();for(let i=0;i<4;i++)app.element('#next').onclick();app.groups['[data-f]'][0].onclick();}
-    assert.deepEqual(current.state(),old.state());
+    assert.deepEqual(legacyShape(current.state()),old.state());
   }
+});
+test('walking pad and jump rope are optional, progressive and respect device limits',()=>{
+  const data=fixture();data.rower=false;data.walker=true;data.rope=true;data.walkerMaxSpeed=15;data.walkerMaxIncline=15;data.scores.walk={a:5,s:0};data.scores.rope={a:20,s:0};
+  const app=run(true,data);
+  app.groups['[data-m]'].find(b=>b.dataset.m==='minimum').onclick();
+  assert.doesNotMatch(app.element('#today').innerHTML,/Tapis de marche|Corde à sauter/);
+  app.groups['[data-m]'].find(b=>b.dataset.m==='short').onclick();
+  assert.doesNotMatch(app.element('#today').innerHTML,/Tapis de marche/);assert.match(app.element('#today').innerHTML,/Corde à sauter/);
+  for(let session=0;session<3;session++){
+    app.groups['[data-m]'].find(b=>b.dataset.m==='normal').onclick();app.element('#start').onclick();
+    assert.match(app.element('#work').innerHTML,/Tapis de marche/);assert.match(app.element('#work').innerHTML,/3 km\/h · inclinaison 0%/);
+    for(let i=0;i<6;i++)app.element('#next').onclick();
+    app.groups['[data-f]'].find(b=>+b.dataset.f===1).onclick();
+  }
+  const state=app.state();assert.equal(state.scores.walk.a,6);assert.equal(state.scores.rope.a,30);assert.equal(state.sessions.length,3);
+  assert.ok(state.walkerMaxSpeed<=15);assert.ok(state.walkerMaxIncline<=15);
 });

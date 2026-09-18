@@ -1,3 +1,5 @@
+> La branche V2 ajoute Lecture et Flair. La V2.1 ajoute, de façon facultative, le tapis de marche et la corde à sauter à Training. Voir [le périmètre et les étapes de sauvegarde en ligne](V2-LECTURE-FLAIR.md). Le document ci-dessous décrit la référence V1.5.
+
 # Constante — V1.5 Modular Core
 
 Évolution additive du Training réellement publié sur https://constante-kohl.vercel.app.
@@ -28,12 +30,12 @@ La prévisualisation locale possède ses propres données : elle n’accède pas
 
 ## Fonctionnement
 
-- `src/modules/training/training.js` : fonctions V1 encapsulées, mêmes calculs, textes, séances, graphiques et réglages.
+- `src/modules/training/training.js` : fonctions V1 encapsulées, avec deux équipements facultatifs. Le tapis respecte les limites de 15 km/h et 15 % d’inclinaison ; la corde progresse par paliers de 10 secondes.
 - `src/core/storage.js` : copie additive, vérification, export brut, protection contre l’écrasement.
 - `src/core/registry.js` : catalogue des modules, indépendant de leurs données.
 - `src/app.js` : montage Training, sauvegarde, pause/réactivation, gestion des erreurs.
 
-Les seuls raccordements dans le code Training sont la lecture initiale, l’enregistrement et l’ajout d’une carte dans Réglages. L’indicateur de version devient V1.5. Les données invalides et erreurs de stockage arrêtent désormais l’application au lieu d’autoriser un redémarrage susceptible de masquer ou écraser les données.
+Les données historiques restent compatibles : en l’absence des nouveaux réglages, le comportement Training demeure celui de la V1. Les deux équipements sont désactivés par défaut et s’activent depuis le profil ou les réglages Training.
 
 Le bouton historique de réinitialisation conserve son effet sur Training uniquement et sa confirmation. Il n’efface ni les autres modules ni la référence V1. La pause n’efface rien. Aucun mécanisme de purge globale n’est ajouté.
 
