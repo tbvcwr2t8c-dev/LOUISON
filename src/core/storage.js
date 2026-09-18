@@ -7,10 +7,18 @@ function requireValue(ok, message) { if (!ok) throw new Error(message); }
 export function validateTraining(data) {
   requireValue(object(data) && typeof data.start === 'string' && Number.isFinite(Date.parse(data.start)), 'Date de départ illisible.');
   requireValue(Number.isFinite(data.target) && data.target > 0 && typeof data.rower === 'boolean', 'Réglages Training illisibles.');
+  requireValue(data.walker === undefined || typeof data.walker === 'boolean', 'Réglage tapis de marche illisible.');
+  requireValue(data.rope === undefined || typeof data.rope === 'boolean', 'Réglage corde à sauter illisible.');
+  requireValue(data.walkerMaxSpeed === undefined || Number.isFinite(data.walkerMaxSpeed) && data.walkerMaxSpeed > 0 && data.walkerMaxSpeed <= 15, 'Vitesse du tapis illisible.');
+  requireValue(data.walkerMaxIncline === undefined || Number.isFinite(data.walkerMaxIncline) && data.walkerMaxIncline >= 0 && data.walkerMaxIncline <= 15, 'Inclinaison du tapis illisible.');
   requireValue(object(data.scores) && Array.isArray(data.sessions), 'Progression Training illisible.');
   for (const key of ['push', 'squat', 'plank', 'burpee', 'row']) {
     const score = data.scores[key];
     requireValue(object(score) && Number.isFinite(score.a) && score.a > 0 && (score.s === undefined || Number.isFinite(score.s)), 'Niveau Training illisible.');
+  }
+  for (const key of ['walk', 'rope']) if (data.scores[key] !== undefined) {
+    const score = data.scores[key];
+    requireValue(object(score) && Number.isFinite(score.a) && score.a > 0 && (score.s === undefined || Number.isFinite(score.s)), 'Niveau équipement Training illisible.');
   }
   for (const session of data.sessions) {
     requireValue(object(session) && typeof session.date === 'string' && Number.isFinite(Date.parse(session.date)) && Array.isArray(session.ex), 'Séance illisible.');
